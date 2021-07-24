@@ -15,19 +15,28 @@ jobs:
       - name: Github Docker login
         run: echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
       - name: Set outputs
+        if: ${{ github.event_name == 'release' }}
+        id: vars
+        run: |
+          echo "VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+      - name: Set outputs
+        if: ${{ github.event_name != 'release' }}
+        id: vars
+        run: |
+          echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+      - name: Set outputs
         id: vars
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "GHCR_REPO=ghcr.io/${{ github.repository_owner }}/crond" >> $GITHUB_ENV
       - name: Docker build
         run: |
-          version="${GITHUB_REF/refs\/tags\//}"
-          minor_version="${version%.*}"
+          minor_version="${VERSION%.*}"
           major_version="${minor_version%.*}"
           patch="${version##*.}"
           next_patch=$((patch+1))
           docker build . \
-              --tag $GHCR_REPO:$version \
+              --tag $GHCR_REPO:$VERSION \
               --tag $GHCR_REPO:$minor_version \
               --tag $GHCR_REPO:$major_version \
               --tag $GHCR_REPO:latest \
@@ -36,7 +45,7 @@ jobs:
               --build-arg DATE="$(date --rfc-3339=seconds | sed 's/ /T/')" \
               --build-arg PROJECT_NAME="crond" \
               --build-arg FULL_COMMIT="${{ github.sha }}" \
-              --build-arg VERSION="$version"
+              --build-arg VERSION="$VERSION"
               --build-arg REPOSITORY="${{ github.repository_owner }}/crond"
 
       - name: Docker push snapshot
@@ -48,7 +57,7 @@ jobs:
       - name: Docker push full
         if: ${{ github.event_name == 'release' }}
         run: |
-          docker push $GHCR_REPO:$version
+          docker push $GHCR_REPO:$VERSION
           docker push $GHCR_REPO:$minor_version
           docker push $GHCR_REPO:$major_version
           docker push $GHCR_REPO:latest
