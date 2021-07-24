@@ -4,11 +4,13 @@ ARG DATE
 ARG PROJECT_NAME
 ARG FULL_COMMIT
 ARG VERSION
+ARG REPOSITORY
 
 LABEL org.opencontainers.image.created=$DATE
 LABEL org.opencontainers.image.name=$PROJECT_NAME
 LABEL org.opencontainers.image.revision=$FULL_COMMIT
 LABEL org.opencontainers.image.version=$VERSION
+LABEL org.opencontainers.image.source="https://github.com/$REPOSITORY"
 
 ARG CRON_USER=crond
 ARG CRON_UID=1000

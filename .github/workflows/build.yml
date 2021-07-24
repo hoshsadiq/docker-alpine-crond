@@ -1,9 +1,10 @@
 name: CD
 
 on:
+  release:
   push:
-    tags:
-      - '*'
+    branches:
+      - main
 
 jobs:
   build-docker:
@@ -12,23 +13,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Github Docker login
-        run: echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        run: echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+      - name: Set outputs
+        id: vars
+        run: |
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "GHCR_REPO=ghcr.io/${{ github.repository_owner }}/crond" >> $GITHUB_ENV
       - name: Docker build
         run: |
           version="${GITHUB_REF/refs\/tags\//}"
           minor_version="${version%.*}"
           major_version="${minor_version%.*}"
+          patch="${version##*.}"
+          next_patch=$((patch+1))
           docker build . \
-              --tag ghcr.io/hoshsadiq/crond:$version \
-              --tag ghcr.io/hoshsadiq/crond:$minor_version \
-              --tag ghcr.io/hoshsadiq/crond:$major_version \
-              --tag ghcr.io/hoshsadiq/crond:latest \
+              --tag $GHCR_REPO:$version \
+              --tag $GHCR_REPO:$minor_version \
+              --tag $GHCR_REPO:$major_version \
+              --tag $GHCR_REPO:latest \
+              --tag $GHCR_REPO:$minor_version.$next_patch-unstable+$GIT_SHORT_SHA \
+              --tag $GHCR_REPO:latest-unstable \
               --build-arg DATE="$(date --rfc-3339=seconds | sed 's/ /T/')" \
-              --build-arg PROJECT_NAME="${{ github.repository }}" \
+              --build-arg PROJECT_NAME="crond" \
               --build-arg FULL_COMMIT="${{ github.sha }}" \
               --build-arg VERSION="$version"
+              --build-arg REPOSITORY="${{ github.repository_owner }}/crond"
 
-          docker push ghcr.io/hoshsadiq/crond:$version
-          docker push ghcr.io/hoshsadiq/crond:$minor_version
-          docker push ghcr.io/hoshsadiq/crond:$major_version
-          docker push ghcr.io/hoshsadiq/crond:latest
+      - name: Docker push snapshot
+        if: ${{ github.event_name != 'release' }}
+        run: |
+          docker push $GHCR_REPO:$minor_version.$next_patch-unstable+$GIT_SHORT_SHA
+          docker push $GHCR_REPO:latest-unstable
+
+      - name: Docker push full
+        if: ${{ github.event_name == 'release' }}
+        run: |
+          docker push $GHCR_REPO:$version
+          docker push $GHCR_REPO:$minor_version
+          docker push $GHCR_REPO:$major_version
+          docker push $GHCR_REPO:latest
