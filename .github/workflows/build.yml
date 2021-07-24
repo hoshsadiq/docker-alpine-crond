@@ -21,7 +21,7 @@ jobs:
       - name: Set outputs
         if: ${{ github.event_name != 'release' }}
         run: |
-          echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+          echo "VERSION=$(git describe --tags --always --abbrev=0)" >> $GITHUB_ENV
       - name: Set outputs
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
