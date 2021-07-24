@@ -16,16 +16,13 @@ jobs:
         run: echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
       - name: Set outputs
         if: ${{ github.event_name == 'release' }}
-        id: vars
         run: |
           echo "VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       - name: Set outputs
         if: ${{ github.event_name != 'release' }}
-        id: vars
         run: |
           echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: Set outputs
-        id: vars
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "GHCR_REPO=ghcr.io/${{ github.repository_owner }}/crond" >> $GITHUB_ENV
